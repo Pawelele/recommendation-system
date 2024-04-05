@@ -6,15 +6,19 @@ from sklearn.preprocessing import StandardScaler
 from sklearn.decomposition import PCA
 from sklearn.cluster import KMeans
 from collections import Counter
-from fastapi import FastAPI, Path
+from fastapi import FastAPI, Path, Request
 from pydantic import BaseModel
 import uvicorn
 from fastapi.middleware.cors import CORSMiddleware
 from database import products_db
 from random import sample
+from fastapi.staticfiles import StaticFiles
+from fastapi.responses import HTMLResponse
 
 
 app = FastAPI()
+
+app.mount("/static", StaticFiles(directory="static"), name="static")
 
 app.add_middleware(
     CORSMiddleware,
@@ -389,6 +393,10 @@ async def run_recommend_products(customer_id: int = Path(..., title="The ID of t
         return {"recommendations": recommendations}
     except Exception as e:
         return {"error": str(e)}
+
+@app.get("/", response_class=HTMLResponse)
+async def read_index(request: Request):
+    return HTMLResponse(content=open("static/index.html").read())
 
 # Uvicorn start
 if __name__ == "__main__":
