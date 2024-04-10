@@ -6,14 +6,16 @@ from sklearn.preprocessing import StandardScaler
 from sklearn.decomposition import PCA
 from sklearn.cluster import KMeans
 from collections import Counter
-from fastapi import FastAPI, Path, Request
+from fastapi import FastAPI, Path, Request, File, UploadFile
 from pydantic import BaseModel
 import uvicorn
 from fastapi.middleware.cors import CORSMiddleware
 from database import products_db
 from random import sample
 from fastapi.staticfiles import StaticFiles
-from fastapi.responses import HTMLResponse
+from fastapi.responses import HTMLResponse, JSONResponse
+from fastapi.requests import Request
+import shutil
 
 
 app = FastAPI()
@@ -322,7 +324,7 @@ def recommend_products(selected_customer_id, customer_data_cleaned, df, outliers
     merged_data = df_filtered.merge(customer_data_cleaned[['CustomerID', 'cluster']], on='CustomerID', how='inner')
 
     # Step 4: Identify the top 10 best-selling products in each cluster based on the total quantity sold
-    best_selling_products = merged_data.groupby(['cluster', 'StockCode', 'Description'])['Quantity'].sum().reset_index()
+    best_selling_products = merged_data.groupby(['cluster', 'StockCode', 'Description','UnitPrice'])['Quantity'].sum().reset_index()
     best_selling_products = best_selling_products.sort_values(by=['cluster', 'Quantity'], ascending=[True, False])
     top_products_per_cluster = best_selling_products.groupby('cluster').head(20)
 
@@ -351,7 +353,8 @@ def recommend_products(selected_customer_id, customer_data_cleaned, df, outliers
                 recommendations.append({
                     'customer_id': selected_customer_id,
                     'rec_stock_code': row['StockCode'],
-                    'rec_descr': row['Description']
+                    'rec_descr': row['Description'],
+                    'rec_price': row['UnitPrice']
                 })
 
     return recommendations
@@ -397,6 +400,16 @@ async def run_recommend_products(customer_id: int = Path(..., title="The ID of t
 @app.get("/", response_class=HTMLResponse)
 async def read_index(request: Request):
     return HTMLResponse(content=open("static/index.html").read())
+
+@app.post("/upload-file/")
+async def upload_file(file: UploadFile = File(...)):
+    try:
+        # Zapisz plik w głównym katalogu projektu pod stałą nazwą
+        with open("data_with_categories.csv", "wb") as buffer:
+            shutil.copyfileobj(file.file, buffer)
+        return {"message": "File uploaded and saved successfully."}
+    except Exception as e:
+        return {"error": str(e)}
 
 # Uvicorn start
 if __name__ == "__main__":
