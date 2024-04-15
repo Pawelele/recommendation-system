@@ -376,6 +376,13 @@ async def get_random_products():
     random_products = sample(products_db, num_records)
     return random_products
 
+@app.get("/all-products/")
+async def get_all_products():
+    # Zwraca wszystkie produkty
+    # num_records = min(50, len(products_db))
+    # random_products = sample(products_db, num_records)
+    return products_db
+
 
 @app.post("/clean-and-train/")
 async def run_clean_and_train():
